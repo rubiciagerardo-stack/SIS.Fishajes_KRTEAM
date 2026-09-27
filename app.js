@@ -2,7 +2,7 @@
 // 1. CONFIGURACIÓN Y CREDENCIALES
 // ==========================================
 const SUPABASE_URL = "https://zjzogdkwclytoopphrfv.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_rk7M4..."; // Tu clave Publishable completa
+const SUPABASE_ANON_KEY = "sb_publishable_rk7M4cbOMMgUEb7v83uSYQ_Uz9eBMVs"; // Tu clave Publishable completa
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
