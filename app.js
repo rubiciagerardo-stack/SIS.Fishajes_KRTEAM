@@ -2,7 +2,7 @@
 // 1. CONFIGURACIÓN Y CREDENCIALES
 // ==========================================
 const SUPABASE_URL = "https://zjzogdkwclytoopphrfv.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_rk7M4cbOMMgUEb7v83uSYQ_Uz9eBMVs"; // Tu clave Publishable completa
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqem9nZGt3Y2x5dG9vcHBocmZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzA4ODYsImV4cCI6MjEwNTg0Njg4Nn0.R_ObEm34JMus8vZ5l-nYn_4Ad4dRI7jENHdjQ-BIt2I"; // Tu clave Publishable completa
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
