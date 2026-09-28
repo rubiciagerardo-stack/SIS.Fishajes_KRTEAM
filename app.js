@@ -10,8 +10,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const TOKEN_NFC_VALIDO = "UPMKRT_TALLER_2026";
 
 // Coordenadas del taller y tolerancia
-const TALLER_LAT = 41.4051098; 
-const TALLER_LON = -4.6999984; 
+const TALLER_LAT = 0; 
+const TALLER_LON = 0; 
 const RADIO_MAX_METROS = 80;
 
 let currentUser = null;
@@ -48,26 +48,66 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
 function validarUbicacion() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject("Tu navegador no soporta geolocalización.");
-      return;
+      return reject("Tu navegador no soporta geolocalización.");
     }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const dist = calcularDistancia(pos.coords.latitude, pos.coords.longitude, TALLER_LAT, TALLER_LON);
+        const userLat = pos.coords.latitude;
+        const userLon = pos.coords.longitude;
+        const dist = calcularDistancia(userLat, userLon, TALLER_LAT, TALLER_LON);
+
+        console.log(`Tu ubicación actual: Lat ${userLat}, Lon ${userLon}`);
+        console.log(`Coordenadas objetivo: Lat ${TALLER_LAT}, Lon ${TALLER_LON}`);
+        console.log(`Distancia calculada: ${Math.round(dist)} metros (Límite: ${RADIO_MAX_METROS} m)`);
+
         if (dist <= RADIO_MAX_METROS) {
           resolve(dist);
         } else {
-          reject(`Estás a ${Math.round(dist)} m del taller (máximo permitido: ${RADIO_MAX_METROS} m).`);
+          // RECHAZO ESTRICTO: Fuera del radio
+          reject(`Estás a ${Math.round(dist)} m del taller. Debes estar a menos de ${RADIO_MAX_METROS} m para fichar.`);
         }
       },
       (err) => {
-        if (err.code === 1) reject("Permiso de GPS denegado.");
-        if (err.code === 2) reject("GPS o ubicación apagada en el móvil.");
-        reject("No se pudo obtener la posición.");
+        let msg = "No se pudo obtener la posición GPS.";
+        if (err.code === 1) msg = "Permiso de ubicación denegado en el navegador.";
+        if (err.code === 2) msg = "Ubicación o GPS desactivado en tu dispositivo.";
+        if (err.code === 3) msg = "Tiempo de espera de GPS agotado.";
+        console.error("Error Geolocation:", err);
+        reject(msg);
       },
-      { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
+      { 
+        enableHighAccuracy: true, // Forzar lectura real del sensor
+        timeout: 10000, 
+        maximumAge: 0            // No usar lecturas guardadas en caché
+      }
     );
   });
+}
+
+async function mostrarPantallaFichaje() {
+  bloqueBloqueo.classList.add('hidden');
+  authSection.classList.add('hidden');
+  fichajeSection.classList.remove('hidden');
+
+  estadoInsignia.className = "badge-status procesando";
+  estadoInsignia.textContent = "Comprobando Ubicación GPS...";
+  fichajeStatusText.textContent = "Calculando distancia al taller...";
+
+  try {
+    const dist = await validarUbicacion();
+    
+    // Solo si la distancia fue aprobada procede aquí
+    fichajeStatusText.textContent = `Ubicación verificada (${Math.round(dist)} m). Registrando fichaje...`;
+    await procesarEntradaSalida();
+  } catch (errGps) {
+    // Si falla o estás fuera, SE DETIENE AQUÍ Y NO TOCA SUPABASE
+    console.warn("Fichaje bloqueado por ubicación:", errGps);
+    estadoInsignia.className = "badge-status fuera";
+    estadoInsignia.textContent = "Fichaje Denegado ⛔";
+    fichajeStatusText.textContent = errGps;
+    alert("⛔ " + errGps);
+  }
 }
 
 // ==========================================
