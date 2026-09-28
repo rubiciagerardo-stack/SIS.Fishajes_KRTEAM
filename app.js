@@ -2,24 +2,27 @@
 // 1. CONFIGURACIÓN Y CREDENCIALES
 // ==========================================
 const SUPABASE_URL = "https://zjzogdkwclytoopphrfv.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqem9nZGt3Y2x5dG9vcHBocmZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzA4ODYsImV4cCI6MjEwNTg0Njg4Nn0.R_ObEm34JMus8vZ5l-nYn_4Ad4dRI7jENHdjQ-BIt2I"; // Tu clave Publishable completa
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.TU_CLAVE_AQUI"; 
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// COORDENADAS DEL TALLER Y RADIO DE TOLERANCIA
-const TALLER_LAT = 40.74184370647294; // Sustituye por la latitud exacta de tu taller
-const TALLER_LON = -4.0553354232072465; // Sustituye por la longitud exacta de tu taller
-const RADIO_MAX_METROS = 80; // Margen en metros para naves o interiores
+// Token grabado en la pegatina NFC
+const TOKEN_NFC_VALIDO = "UPMKRT_TALLER_2026";
+
+// Coordenadas del taller y tolerancia
+const TALLER_LAT = 40.389512; 
+const TALLER_LON = -3.627845; 
+const RADIO_MAX_METROS = 80;
 
 let currentUser = null;
 let sesionActiva = null;
 
-// ==========================================
-// 2. REFERENCIAS AL DOM
-// ==========================================
+// Elementos DOM
+const bloqueBloqueo = document.getElementById('bloqueBloqueo');
 const authSection = document.getElementById('authSection');
-const dashboardSection = document.getElementById('dashboardSection');
-const logoutBtn = document.getElementById('logoutBtn');
+const fichajeSection = document.getElementById('fichajeSection');
+const estadoInsignia = document.getElementById('estadoInsignia');
+const fichajeStatusText = document.getElementById('fichajeStatusText');
 const authMsg = document.getElementById('authMsg');
 
 const emailInput = document.getElementById('emailInput');
@@ -27,150 +30,99 @@ const passwordInput = document.getElementById('passwordInput');
 const nombreInput = document.getElementById('nombreInput');
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn');
-
-const estadoInsignia = document.getElementById('estadoInsignia');
-const fichajeStatusText = document.getElementById('fichajeStatusText');
-const listaPresentes = document.getElementById('listaPresentes');
-const contadorPresentes = document.getElementById('contadorPresentes');
+const logoutBtn = document.getElementById('logoutBtn');
 
 // ==========================================
-// 3. MATEMÁTICA Y GEOLOCALIZACIÓN (HAVERSINE)
+// 2. CÁLCULO HAVERSINE Y GPS
 // ==========================================
-function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+function calcularDistancia(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-function validarUbicacionTaller() {
+function validarUbicacion() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject("Tu navegador no soporta geolocalización.");
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const dist = calcularDistanciaMetros(pos.coords.latitude, pos.coords.longitude, TALLER_LAT, TALLER_LON);
+        const dist = calcularDistancia(pos.coords.latitude, pos.coords.longitude, TALLER_LAT, TALLER_LON);
         if (dist <= RADIO_MAX_METROS) {
           resolve(dist);
         } else {
-          reject(`Estás a ${Math.round(dist)} m del taller. Debes estar a menos de ${RADIO_MAX_METROS} m.`);
+          reject(`Estás a ${Math.round(dist)} m del taller (máximo permitido: ${RADIO_MAX_METROS} m).`);
         }
       },
       (err) => {
-        let msg = "No se pudo obtener la posición.";
-        if (err.code === 1) msg = "Permiso de ubicación denegado por el usuario.";
-        reject(msg);
+        if (err.code === 1) reject("Permiso de GPS denegado.");
+        if (err.code === 2) reject("GPS o ubicación apagada en el móvil.");
+        reject("No se pudo obtener la posición.");
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
     );
   });
 }
 
 // ==========================================
-// 4. FLUJO DE DISPARO POR NFC
+// 3. CONTROL DE ACCESO NFC Y FLUJO
 // ==========================================
-async function procesarDisparoNFC() {
+async function iniciarFlujoNFC() {
   const params = new URLSearchParams(window.location.search);
-  
-  // Si la URL contiene ?action=nfc ejecuta el fichaje automático
-  if (params.get('action') === 'nfc') {
-    estadoInsignia.className = "badge-status procesando";
-    estadoInsignia.textContent = "Verificando GPS...";
-    fichajeStatusText.textContent = "Comprobando que estás dentro del taller...";
+  const token = params.get('token');
 
-    try {
-      await validarUbicacionTaller();
-      fichajeStatusText.textContent = "Ubicación verificada. Registrando...";
-      await alternarFichaje();
-    } catch (errorGps) {
-      alert("⛔ Error de presencia: " + errorGps);
-      fichajeStatusText.textContent = "Acceso denegado: no estás en el taller.";
-      actualizarEstadoVisual();
-    } finally {
-      // Limpiar el parámetro de la barra para evitar re-fichajes accidentales al recargar
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }
-}
-
-async function alternarFichaje() {
-  if (sesionActiva) {
-    // Salida
-    const salidaDate = new Date();
-    const entradaDate = new Date(sesionActiva.entrada);
-    const min = Math.round((salidaDate - entradaDate) / 60000);
-
-    await supabaseClient
-      .from('fichajes')
-      .update({
-        salida: salidaDate.toISOString(),
-        duracion_minutos: min,
-        en_taller: false
-      })
-      .eq('id', sesionActiva.id);
-  } else {
-    // Entrada
-    await supabaseClient
-      .from('fichajes')
-      .insert([{ user_id: currentUser.id, en_taller: true }]);
+  // Si no trae el token de la pegatina, acceso denegado
+  if (token !== TOKEN_NFC_VALIDO) {
+    bloqueBloqueo.classList.remove('hidden');
+    authSection.classList.add('hidden');
+    fichajeSection.classList.add('hidden');
+    return;
   }
 
-  await cargarEstadoActual();
-  await cargarMiembrosEnTaller();
-}
-
-// ==========================================
-// 5. ESTADO Y VISTAS
-// ==========================================
-async function initApp() {
+  // Comprobar autenticación
   const { data: { session } } = await supabaseClient.auth.getSession();
-  
   if (session) {
     currentUser = session.user;
-    mostrarDashboard();
+    mostrarPantallaFichaje();
   } else {
     mostrarAuth();
   }
-
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    if (session) {
-      currentUser = session.user;
-      mostrarDashboard();
-    } else {
-      currentUser = null;
-      mostrarAuth();
-    }
-  });
 }
 
 function mostrarAuth() {
+  bloqueBloqueo.classList.add('hidden');
   authSection.classList.remove('hidden');
-  dashboardSection.classList.add('hidden');
-  logoutBtn.classList.add('hidden');
-  authMsg.textContent = '';
+  fichajeSection.classList.add('hidden');
 }
 
-async function mostrarDashboard() {
+async function mostrarPantallaFichaje() {
+  bloqueBloqueo.classList.add('hidden');
   authSection.classList.add('hidden');
-  dashboardSection.classList.remove('hidden');
-  logoutBtn.classList.remove('hidden');
-  
-  await cargarEstadoActual();
-  await cargarMiembrosEnTaller();
-  await procesarDisparoNFC();
+  fichajeSection.classList.remove('hidden');
+
+  estadoInsignia.className = "badge-status procesando";
+  estadoInsignia.textContent = "Comprobando Ubicación GPS...";
+  fichajeStatusText.textContent = "Verificando que estás físicamente en el taller...";
+
+  try {
+    const dist = await validarUbicacion();
+    fichajeStatusText.textContent = `Ubicación correcta (${Math.round(dist)} m). Fichando...`;
+    await procesarEntradaSalida();
+  } catch (errGps) {
+    estadoInsignia.className = "badge-status fuera";
+    estadoInsignia.textContent = "Fichaje Denegado ⛔";
+    fichajeStatusText.textContent = errGps;
+  }
 }
 
-async function cargarEstadoActual() {
-  if (!currentUser) return;
-
+async function procesarEntradaSalida() {
+  // Comprobar si ya estaba dentro
   const { data } = await supabaseClient
     .from('fichajes')
     .select('*')
@@ -179,104 +131,79 @@ async function cargarEstadoActual() {
     .order('entrada', { ascending: false })
     .limit(1);
 
-  if (data && data.length > 0) {
-    sesionActiva = data[0];
-  } else {
-    sesionActiva = null;
-  }
-  actualizarEstadoVisual();
-}
+  sesionActiva = (data && data.length > 0) ? data[0] : null;
 
-function actualizarEstadoVisual() {
   if (sesionActiva) {
-    const hora = new Date(sesionActiva.entrada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    estadoInsignia.className = "badge-status dentro";
-    estadoInsignia.textContent = "Dentro del Taller ✅";
-    fichajeStatusText.textContent = `Registrado desde las ${hora}. Acerca el móvil al NFC para salir.`;
-  } else {
+    // Marcar salida
+    const salidaDate = new Date();
+    const entradaDate = new Date(sesionActiva.entrada);
+    const min = Math.round((salidaDate - entradaDate) / 60000);
+
+    await supabaseClient
+      .from('fichajes')
+      .update({ salida: salidaDate.toISOString(), duracion_minutos: min, en_taller: false })
+      .eq('id', sesionActiva.id);
+
     estadoInsignia.className = "badge-status fuera";
-    estadoInsignia.textContent = "Fuera del Taller ⛔";
-    fichajeStatusText.textContent = "Acerca el móvil a la pegatina NFC del taller para entrar.";
+    estadoInsignia.textContent = "Salida Registrada 🚪";
+    fichajeStatusText.textContent = `Has salido del taller. Tiempo total: ${min} minutos.`;
+  } else {
+    // Marcar entrada
+    await supabaseClient
+      .from('fichajes')
+      .insert([{ user_id: currentUser.id, en_taller: true }]);
+
+    const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    estadoInsignia.className = "badge-status dentro";
+    estadoInsignia.textContent = "Entrada Registrada ✅";
+    fichajeStatusText.textContent = `¡Bienvenido al taller! Fichado a las ${hora}.`;
   }
 }
 
 // ==========================================
-// 6. AUTENTICACIÓN
+// 4. EVENTOS DE LOGIN Y REGISTRO
 // ==========================================
+loginBtn.addEventListener('click', async () => {
+  authMsg.textContent = "Verificando credenciales...";
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: emailInput.value.trim(),
+    password: passwordInput.value
+  });
+  if (error) {
+    authMsg.textContent = "Credenciales incorrectas.";
+  } else {
+    currentUser = data.user;
+    mostrarPantallaFichaje();
+  }
+});
+
 registerBtn.addEventListener('click', async () => {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const nombre = nombreInput.value.trim();
 
   if (!email || !password || !nombre) {
-    authMsg.textContent = "Rellena correo, contraseña y nombre.";
+    authMsg.textContent = "Rellena todos los campos.";
     return;
   }
 
   authMsg.textContent = "Creando cuenta...";
-  registerBtn.disabled = true;
-
   const { data, error } = await supabaseClient.auth.signUp({ email, password });
   if (error) {
     authMsg.textContent = error.message;
-    registerBtn.disabled = false;
     return;
   }
 
   if (data.user) {
-    await supabaseClient.from('profiles').insert([{ id: data.user.id, nombre, rol: 'Mecánico / Piloto' }]);
-  }
-  registerBtn.disabled = false;
-});
-
-loginBtn.addEventListener('click', async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  authMsg.textContent = "Iniciando sesión...";
-  loginBtn.disabled = true;
-
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
-    authMsg.textContent = "Credenciales incorrectas.";
-    loginBtn.disabled = false;
+    await supabaseClient.from('profiles').insert([{ id: data.user.id, nombre, rol: 'Miembro UPMKRT' }]);
+    currentUser = data.user;
+    mostrarPantallaFichaje();
   }
 });
 
 logoutBtn.addEventListener('click', async () => {
   await supabaseClient.auth.signOut();
+  window.location.reload();
 });
 
-// ==========================================
-// 7. OCUPACIÓN EN TIEMPO REAL
-// ==========================================
-async function cargarMiembrosEnTaller() {
-  const { data } = await supabaseClient
-    .from('fichajes')
-    .select('entrada, profiles(nombre, rol)')
-    .eq('en_taller', true);
-
-  listaPresentes.innerHTML = '';
-  if (!data || data.length === 0) {
-    contadorPresentes.textContent = "0 personas";
-    listaPresentes.innerHTML = '<li class="member-empty">Nadie fichado en este momento.</li>';
-    return;
-  }
-
-  contadorPresentes.textContent = `${data.length} ${data.length === 1 ? 'persona' : 'personas'}`;
-  data.forEach(item => {
-    const hora = new Date(item.entrada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const li = document.createElement('li');
-    li.className = 'member-item';
-    li.innerHTML = `
-      <div>
-        <p class="member-name">${item.profiles?.nombre || 'Miembro'}</p>
-        <p class="member-role">${item.profiles?.rol || 'UPMKRT'}</p>
-      </div>
-      <span class="member-time">Entró ${hora}</span>
-    `;
-    listaPresentes.appendChild(li);
-  });
-}
-
-initApp();
+iniciarFlujoNFC();

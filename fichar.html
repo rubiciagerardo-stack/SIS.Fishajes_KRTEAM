@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Punto de Fichaje NFC - UPMKRT</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="header">
+      <h1>UPMKRT</h1>
+      <p class="subtitle">Control de Acceso NFC</p>
+    </header>
+
+    <main>
+      <!-- Estado de acceso no autorizado si no viene de NFC -->
+      <div id="bloqueBloqueo" class="card hidden">
+        <h2 style="color: #ef4444;">⛔ Acceso Restringido</h2>
+        <p>Solo se puede acceder a esta pantalla escaneando la pegatina NFC del taller.</p>
+        <a href="index.html" class="btn" style="display:inline-block; margin-top:15px; text-decoration:none; text-align:center;">Ir al Tablón Público</a>
+      </div>
+
+      <!-- Pantalla de Login / Registro si no tiene sesión -->
+      <section id="authSection" class="hidden">
+        <div class="card">
+          <h2>Identificación de Miembro</h2>
+          <p class="card-subtitle">Inicia sesión o regístrate para validar tu fichaje.</p>
+          
+          <input type="email" id="emailInput" placeholder="Correo electrónico" class="input">
+          <input type="password" id="passwordInput" placeholder="Contraseña" class="input">
+          <input type="text" id="nombreInput" placeholder="Nombre y Apellidos (solo registro)" class="input">
+
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button id="loginBtn" class="btn btn-primary" style="flex:1;">Entrar</button>
+            <button id="registerBtn" class="btn btn-secondary" style="flex:1;">Registrarse</button>
+          </div>
+          <p id="authMsg" class="auth-message"></p>
+        </div>
+      </section>
+
+      <!-- Pantalla de confirmación y fichaje por GPS -->
+      <section id="fichajeSection" class="hidden">
+        <div class="card card-action">
+          <div id="estadoInsignia" class="badge-status procesando">
+            Verificando Ubicación...
+          </div>
+          <p id="fichajeStatusText" class="card-subtitle">Comprobando presencia por GPS en el taller...</p>
+          <button id="logoutBtn" class="btn-logout" style="margin-top:20px;">Cerrar Sesión</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -3,72 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KartTeam - Control de Taller</title>
-
-  <!-- Enlace a tu hoja de estilos local -->
+  <title>UPMKRT - Tablón de Presencia</title>
   <link rel="stylesheet" href="style.css">
-
-  <!-- Librería cliente de Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
 </head>
 <body>
+  <div class="app-container">
+    <header class="header">
+      <h1>UPMKRT</h1>
+      <p class="subtitle">Estado en tiempo real del taller</p>
+    </header>
 
-  <!-- Barra superior -->
-  <header>
-    <div class="brand">
-      <span class="logo">🏎️</span>
-      <h1>KartTeam Taller</h1>
-    </div>
-    <button id="logoutBtn" class="btn-secondary hidden">Cerrar Sesión</button>
-  </header>
-
-  <main>
-
-    <!-- Pantalla 1: Registro y Login (Se oculta al iniciar sesión) -->
-    <section id="authSection" class="card">
-      <h2 class="card-title">Acceso de Miembros</h2>
-      <p class="card-subtitle">Inicia sesión una vez para vincular este dispositivo.</p>
-      
-      <input id="emailInput" type="email" placeholder="Correo electrónico" class="input-field" autocomplete="email">
-      <input id="passwordInput" type="password" placeholder="Contraseña" class="input-field" autocomplete="current-password">
-      <input id="nombreInput" type="text" placeholder="Nombre y Apellido (al registrarte)" class="input-field">
-
-      <div class="btn-group">
-        <button id="loginBtn" class="btn-primary">Entrar</button>
-        <button id="registerBtn" class="btn-muted">Registrarse</button>
+    <main>
+      <div class="card">
+        <div class="list-header">
+          <h3>En el taller ahora</h3>
+          <span id="contadorPresentes" class="badge">0 personas</span>
+        </div>
+        <ul id="listaPresentes" class="member-list">
+          <li class="member-empty">Cargando estado...</li>
+        </ul>
       </div>
-      <p id="authMsg" class="error-text"></p>
-    </section>
 
-<!-- Pantalla 2: Estado del Miembro y Ocupación -->
-<section id="dashboardSection" class="hidden">
-
-  <!-- Tarjeta de Estado (Sin botón manual) -->
-  <div class="card card-action">
-    <p class="section-tag">Punto de Control NFC</p>
-    <div id="estadoInsignia" class="badge-status fuera">
-      Fuera del Taller
-    </div>
-    <p id="fichajeStatusText" class="card-subtitle">Acerca el móvil a la pegatina NFC del taller para fichar.</p>
+      <div class="card info-box">
+        <p>ℹ️ <strong>¿Quieres fichar?</strong> Acerca tu móvil a la pegatina NFC situada en la puerta del taller.</p>
+      </div>
+    </main>
   </div>
 
-  <!-- Lista de personas en el taller -->
-  <div class="card">
-    <div class="list-header">
-      <h3>En el taller ahora</h3>
-      <span id="contadorPresentes" class="badge">0 personas</span>
-    </div>
-    <ul id="listaPresentes" class="member-list">
-      <li class="member-empty">Cargando miembros...</li>
-    </ul>
-  </div>
-
-</section>
-
-  </main>
-
-  <!-- Enlace al archivo de lógica JavaScript -->
-  <script src="app.js"></script>
+  <script src="tablon.js"></script>
 </body>
 </html>
