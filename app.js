@@ -11,7 +11,7 @@ const TOKEN_NFC_VALIDO = "UPMKRT_TALLER_2026";
 
 // Coordenadas del taller y tolerancia
 const TALLER_LAT = 40.4051098;  
-const TALLER_LON = -3,6999984; 
+const TALLER_LON = -3.6999984; 
 const RADIO_MAX_METROS = 80;
 
 let currentUser = null;
