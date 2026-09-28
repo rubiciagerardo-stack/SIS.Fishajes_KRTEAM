@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://zjzogdkwclytoopphrfv.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.TU_CLAVE_AQUI"; // Tu clave anon legacy
+const SUPABASE_ANON_KEY = "sb_publishable_rk7M4cbOMMgUEb7v83uSYQ_Uz9eBMVs"; // Tu clave anon legacy
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
